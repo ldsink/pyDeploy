@@ -50,7 +50,7 @@ def main():
     config = configparser.ConfigParser()
     config.read(config_file)
 
-    # 检查必须的环境
+    # 检查必须的工具
     redis_cli_path = config.get('env', 'redis_path')
     if not check_tool('redis-cli', redis_cli_path):
         raise Exception('redis-cli can\'t find.')
@@ -63,15 +63,15 @@ def main():
     if not check_tool('rsync', rsync_path):
         raise Exception('rsync can\'t find.')
 
-
-'''
     # 检查Redis配置
     redis_host = config.get('redis', 'host')
     redis_port = config.get('redis', 'port')
     redis_key = config.get('redis', 'condition_key')
     if not all((redis_key, redis_port, redis_host)):
-        raise Exception('Reading redis config file error.')
+        raise Exception('redis config missing.')
 
+
+'''
     # 更新代码
     redis_log(redis_host, redis_port, redis_key, 'begin pull new codes.')
     codes_dir = config.get('env', 'source_location')
