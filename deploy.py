@@ -12,6 +12,7 @@ import subprocess
 
 CONFIG_FILE = 'deploy.ini'
 
+PROGRESS_NULL = '0'  # no task
 PROGRESS_PULL = '1'  # pull code
 PROGRESS_COMP = '2'  # complie
 PROGRESS_SYNC = '3'  # rsync
@@ -137,17 +138,22 @@ def main():
         redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
         raise Exception(msg)
 
-
-'''
-
     # 同步完成后执行扫尾脚本
-    redis_log(redis_host, redis_port, redis_key, 'begin outstanding work.')
+    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_EODW)
+    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin outstanding work.')
     finish_script = config.get('env', 'finish_script')
     if finish_script:
-        redis_log(redis_host, redis_port, redis_key, 'executing outstanding work.')
+        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'executing outstanding work.')
         if subprocess.call([finish_script]):
-            raise Exception('扫尾脚本运行时发生错误.')
-'''
+            msg = '扫尾脚本运行时发生错误。'
+            redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+            redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+            raise Exception(msg)
+
+    redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_FINISH)
+    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'Finished')
+    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_NULL)
+
 
 if __name__ == "__main__":
     try:
