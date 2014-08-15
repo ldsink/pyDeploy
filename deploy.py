@@ -38,14 +38,14 @@ def check_tool(tool_name, tool_path=None):
     return is_exist
 
 
-def redis_log(host, port, key, field, value):
-    cmd = ['redis-cli', '-h', host, '-p', port, 'HSET', key, field, value]
+def redis_log(redis_path, host, port, key, field, value):
+    cmd = [redis_path, '-h', host, '-p', port, 'HSET', key, field, value]
     if subprocess.call(cmd):
         raise Exception('Connect to redis error.')
 
 
-def rsync(source, dest):
-    cmd = ['rsync',
+def rsync(rsync_path, source, dest):
+    cmd = [rsync_path,
            '-c',  # skip based on checksum, not mod-time & size
            '-r',  # recurse into directories
            '-p',  # preserve permissions
@@ -77,26 +77,30 @@ def main():
         raise Exception('rsync can\'t find.')
 
     # 检查Redis配置
+    if redis_cli_path:
+        redis_cli_path += '/redis-cli'
+    else:
+        redis_cli_path = 'redis-cli'
     redis_host = config.get('redis', 'host')
     redis_port = config.get('redis', 'port')
     redis_key = config.get('redis', 'condition_key')
-    if not all((redis_host, redis_port, redis_key)):
+    if not all((redis_cli_path, redis_host, redis_port, redis_key)):
         raise Exception('redis config missing.')
 
     # 初始化记录
-    redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_NORMAL)
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_NORMAL)
 
     # 更新代码
-    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_PULL)
-    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin pull new codes.')
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_PULL)
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin pull new codes.')
     project_path = config.get('env', 'project_path')
     if not project_path:
         msg = 'project_path config missing.'
-        redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
-        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
         raise Exception(msg)
 
-    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'pulling codes.')
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'pulling codes.')
     if git_path:
         git_path += '/git'
     else:
@@ -104,55 +108,59 @@ def main():
     cmd = [git_path, 'pull']
     if subprocess.call(cmd, cwd=project_path):
         msg = 'git pull error.'
-        redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
-        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
         raise Exception(msg)
 
     # 编译代码
-    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_COMP)
-    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin compile.')
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_COMP)
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin compile.')
     compile_script = config.get('env', 'compile_script')
     if compile_script:
-        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'compiling.')
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'compiling.')
         if subprocess.call([compile_script]):
             msg = '编译脚本运行时发生错误。'
-            redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
-            redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+            redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+            redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
             raise Exception(msg)
 
     # 同步新代码到网站目录
-    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_SYNC)
-    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin rsync.')
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_SYNC)
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin rsync.')
+    if rsync_path:
+        rsync_path += '/rsync'
+    else:
+        rsync_path = 'rsync'
     source_path = config.get('rsync', 'source_path')
     dest_path = config.get('rsync', 'dest_path')
-    if not all((source_path, dest_path)):
+    if not all((rsync_path, source_path, dest_path)):
         msg = 'rsync argus missing.'
-        redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
-        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
         raise Exception(msg)
 
-    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'rsyncing...')
-    if rsync(source_path, dest_path):
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'rsyncing...')
+    if rsync(rsync_path, source_path, dest_path):
         msg = 'rsync error.'
-        redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
-        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
         raise Exception(msg)
 
     # 同步完成后执行扫尾脚本
-    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_EODW)
-    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin outstanding work.')
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_EODW)
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin outstanding work.')
     finish_script = config.get('env', 'finish_script')
     if finish_script:
-        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'executing outstanding work.')
+        redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'executing outstanding work.')
         if subprocess.call([finish_script]):
             msg = '扫尾脚本运行时发生错误。'
-            redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
-            redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+            redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+            redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
             raise Exception(msg)
 
-    redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_FINISH)
-    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'Finished')
-    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_NULL)
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_FINISH)
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'Finished')
+    redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_NULL)
 
 
 if __name__ == "__main__":
