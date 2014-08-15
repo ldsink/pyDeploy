@@ -13,12 +13,15 @@ import subprocess
 config_file = 'deploy.ini'
 
 
-def check_tool(tool_name):
-    isExist = False
-    for cmdPath in os.environ['PATH'].split(':'):
-        if os.path.isdir(cmdPath) and tool_name in os.listdir(cmdPath):
-            isExist = True
-    return isExist
+def check_tool(tool_name, tool_path=None):
+    is_exist = False
+    if not tool_path:
+        for cmdPath in os.environ['PATH'].split(':'):
+            if os.path.isdir(cmdPath) and tool_name in os.listdir(cmdPath):
+                is_exist = True
+    elif os.path.isdir(tool_path) and tool_name in os.listdir(tool_path):
+        is_exist = True
+    return is_exist
 
 
 def redis_log(host, port, key, value):
@@ -40,6 +43,7 @@ def rsync(source, dest):
     if subprocess.call(cmd):
         raise Exception('rsync error.')
 
+
 def main():
     if not os.path.isfile(config_file):
         raise Exception('Config file not exist.')
@@ -47,20 +51,26 @@ def main():
     config.read(config_file)
 
     # 检查必须的环境
-    tools = config.get('env', 'required_tools')
-    if not tools:
-        raise Exception('Read Config [env] required_tools error.')
-    tools = str(tools).split(':')
-    for tool in tools:
-        if not check_tool(tool):
-            raise Exception('Tool : {} not exist.'.format(tool))
+    redis_cli_path = config.get('env', 'redis_path')
+    if not check_tool('redis-cli', redis_cli_path):
+        raise Exception('redis-cli can\'t find.')
 
+    git_path = config.get('env', 'git_path')
+    if not check_tool('git', git_path):
+        raise Exception('git can\'t find.')
+
+    rsync_path = config.get('env', 'rsync_path')
+    if not check_tool('rsync', rsync_path):
+        raise Exception('rsync can\'t find.')
+
+
+'''
     # 检查Redis配置
     redis_host = config.get('redis', 'host')
     redis_port = config.get('redis', 'port')
     redis_key = config.get('redis', 'condition_key')
     if not all((redis_key, redis_port, redis_host)):
-        raise Exception('Read Config [redis] error.')
+        raise Exception('Reading redis config file error.')
 
     # 更新代码
     redis_log(redis_host, redis_port, redis_key, 'begin pull new codes.')
@@ -98,9 +108,10 @@ def main():
         redis_log(redis_host, redis_port, redis_key, 'executing outstanding work.')
         if subprocess.call([finish_script]):
             raise Exception('扫尾脚本运行时发生错误.')
+'''
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(e)
+        print('Error : {}'.format(e))
