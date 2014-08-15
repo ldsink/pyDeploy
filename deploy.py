@@ -53,8 +53,7 @@ def rsync(source, dest):
            source,
            dest
     ]
-    if subprocess.call(cmd):
-        raise Exception('rsync error.')
+    return subprocess.call(cmd)
 
 
 def main():
@@ -119,17 +118,27 @@ def main():
             redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
             redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
             raise Exception(msg)
-'''
 
     # 同步新代码到网站目录
-    redis_log(redis_host, redis_port, redis_key, 'begin rsync.')
-    source_dir = config.get('rsync', 'source_dir')
-    dest_dir = config.get('rsync', 'dest_dir')
-    if not source_dir or not dest_dir:
-        raise Exception('Missing rsync argus.')
+    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_SYNC)
+    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin rsync.')
+    source_path = config.get('rsync', 'source_path')
+    dest_path = config.get('rsync', 'dest_path')
+    if not all((source_path, dest_path)):
+        msg = 'rsync argus missing.'
+        redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+        raise Exception(msg)
 
-    redis_log(redis_host, redis_port, redis_key, 'rsyncing...')
-    rsync(source_dir, dest_dir)
+    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'rsyncing...')
+    if rsync(source_path, dest_path):
+        msg = 'rsync error.'
+        redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+        raise Exception(msg)
+
+
+'''
 
     # 同步完成后执行扫尾脚本
     redis_log(redis_host, redis_port, redis_key, 'begin outstanding work.')
