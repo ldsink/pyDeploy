@@ -12,14 +12,18 @@ import subprocess
 
 CONFIG_FILE = 'deploy.ini'
 
-PROGRESS_PULL = 1  # pull code
-PROGRESS_COMP = 2  # complie
-PROGRESS_SYNC = 3  # rsync
-PROGRESS_EODW = 4  # end of deployment work
+PROGRESS_PULL = '1'  # pull code
+PROGRESS_COMP = '2'  # complie
+PROGRESS_SYNC = '3'  # rsync
+PROGRESS_EODW = '4'  # end of deployment work
 
-STATUS_NORMAL = 0
-STATUS_FINISH = 1
-STATUS_ERROR = 2
+STATUS_NORMAL = '0'
+STATUS_FINISH = '1'
+STATUS_ERROR = '2'
+
+FIELD_STATUS = 'status'
+FIELD_PROGRESS = 'progress'
+FIELD_MESSAGE = 'message'
 
 
 def check_tool(tool_name, tool_path=None):
@@ -33,8 +37,8 @@ def check_tool(tool_name, tool_path=None):
     return is_exist
 
 
-def redis_log(host, port, key, value):
-    cmd = ['redis-cli', '-h', host, '-p', port, 'SET', key, value]
+def redis_log(host, port, key, field, value):
+    cmd = ['redis-cli', '-h', host, '-p', port, 'HSET', key, field, value]
     if subprocess.call(cmd):
         raise Exception('Connect to redis error.')
 
@@ -76,21 +80,36 @@ def main():
     redis_host = config.get('redis', 'host')
     redis_port = config.get('redis', 'port')
     redis_key = config.get('redis', 'condition_key')
-    if not all((redis_key, redis_port, redis_host)):
+    if not all((redis_host, redis_port, redis_key)):
         raise Exception('redis config missing.')
+
+    # 初始化记录
+    redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_NORMAL)
+
+    # 更新代码
+    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_PULL)
+    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin pull new codes.')
+    project_path = config.get('env', 'project_path')
+    if not project_path:
+        msg = 'project_path config missing.'
+        redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+        raise Exception(msg)
+
+    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'pulling codes.')
+    if git_path:
+        git_path += '/git'
+    else:
+        git_path = 'git'
+    cmd = [git_path, 'pull']
+    if subprocess.call(cmd, cwd=project_path):
+        msg = 'git pull error.'
+        redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+        raise Exception(msg)
 
 
 '''
-    # 更新代码
-    redis_log(redis_host, redis_port, redis_key, 'begin pull new codes.')
-    codes_dir = config.get('env', 'source_location')
-    if not codes_dir:
-        raise Exception('Read Config [env] source_location error.')
-
-    redis_log(redis_host, redis_port, redis_key, 'pulling codes.'.format(codes_dir))
-    cmd = ['git', 'pull']
-    if subprocess.call(cmd, cwd=codes_dir):
-        raise Exception('git pull error.')
 
     # 编译代码
     redis_log(redis_host, redis_port, redis_key, 'begin compile.')
