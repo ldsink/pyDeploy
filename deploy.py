@@ -29,11 +29,11 @@ def redis_log(host, port, key, value):
 
 def rsync(source, dest):
     cmd = ['rsync',
-           # '-t',  # 快速复制策略（文件的时间戳、大小完全一致，认为文件相同）
-           '-I', # 老老实实逐一复制，确保数据的一致性，但是速度上会变慢
-           '-r',  # 同步文件夹
-           '-p',  # 保持权限一致
-           '--delete',  # 目的端删除源端不存在的文件
+           '-c',  # skip based on checksum, not mod-time & size
+           '-r',  # recurse into directories
+           '-p',  # preserve permissions
+           '--delete-delay',  # find deletions during, delete after
+           '--delay-updates',  # put all updated files into place at transfer's end
            source,
            dest
     ]
