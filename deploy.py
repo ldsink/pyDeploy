@@ -70,7 +70,6 @@ def main():
     if not all((redis_key, redis_port, redis_host)):
         raise Exception('redis config missing.')
 
-
 '''
     # 更新代码
     redis_log(redis_host, redis_port, redis_key, 'begin pull new codes.')
