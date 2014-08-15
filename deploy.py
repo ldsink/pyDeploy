@@ -108,16 +108,18 @@ def main():
         redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
         raise Exception(msg)
 
-
-'''
-
     # 编译代码
-    redis_log(redis_host, redis_port, redis_key, 'begin compile.')
+    redis_log(redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_COMP)
+    redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin compile.')
     compile_script = config.get('env', 'compile_script')
     if compile_script:
-        redis_log(redis_host, redis_port, redis_key, 'compiling.')
+        redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, 'compiling.')
         if subprocess.call([compile_script]):
-            raise Exception('编译脚本运行时发生错误.')
+            msg = '编译脚本运行时发生错误。'
+            redis_log(redis_host, redis_port, redis_key, FIELD_STATUS, STATUS_ERROR)
+            redis_log(redis_host, redis_port, redis_key, FIELD_MESSAGE, msg)
+            raise Exception(msg)
+'''
 
     # 同步新代码到网站目录
     redis_log(redis_host, redis_port, redis_key, 'begin rsync.')
