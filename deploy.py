@@ -33,7 +33,7 @@ def check_tool(tool_name, tool_path=None):
         for cmdPath in os.environ['PATH'].split(':'):
             if os.path.isdir(cmdPath) and tool_name in os.listdir(cmdPath):
                 is_exist = True
-    elif os.path.isdir(tool_path) and tool_name in os.listdir(tool_path):
+    elif os.path.isfile(tool_path):
         is_exist = True
     return is_exist
 
@@ -77,9 +77,7 @@ def main():
         raise Exception('rsync can\'t find.')
 
     # 检查Redis配置
-    if redis_cli_path:
-        redis_cli_path += '/redis-cli'
-    else:
+    if not redis_cli_path:
         redis_cli_path = 'redis-cli'
     redis_host = config.get('redis', 'host')
     redis_port = config.get('redis', 'port')
@@ -101,9 +99,7 @@ def main():
         raise Exception(msg)
 
     redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'pulling codes.')
-    if git_path:
-        git_path += '/git'
-    else:
+    if not git_path:
         git_path = 'git'
     cmd = [git_path, 'pull']
     if subprocess.call(cmd, cwd=project_path):
@@ -127,9 +123,7 @@ def main():
     # 同步新代码到网站目录
     redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_PROGRESS, PROGRESS_SYNC)
     redis_log(redis_cli_path, redis_host, redis_port, redis_key, FIELD_MESSAGE, 'begin rsync.')
-    if rsync_path:
-        rsync_path += '/rsync'
-    else:
+    if not rsync_path:
         rsync_path = 'rsync'
     source_path = config.get('rsync', 'source_path')
     dest_path = config.get('rsync', 'dest_path')
