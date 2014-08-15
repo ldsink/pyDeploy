@@ -10,7 +10,16 @@ import os
 import configparser
 import subprocess
 
-config_file = 'deploy.ini'
+CONFIG_FILE = 'deploy.ini'
+
+PROGRESS_PULL = 1  # pull code
+PROGRESS_COMP = 2  # complie
+PROGRESS_SYNC = 3  # rsync
+PROGRESS_EODW = 4  # end of deployment work
+
+STATUS_NORMAL = 0
+STATUS_FINISH = 1
+STATUS_ERROR = 2
 
 
 def check_tool(tool_name, tool_path=None):
@@ -45,10 +54,10 @@ def rsync(source, dest):
 
 
 def main():
-    if not os.path.isfile(config_file):
+    if not os.path.isfile(CONFIG_FILE):
         raise Exception('Config file not exist.')
     config = configparser.ConfigParser()
-    config.read(config_file)
+    config.read(CONFIG_FILE)
 
     # 检查必须的工具
     redis_cli_path = config.get('env', 'redis_path')
@@ -69,6 +78,7 @@ def main():
     redis_key = config.get('redis', 'condition_key')
     if not all((redis_key, redis_port, redis_host)):
         raise Exception('redis config missing.')
+
 
 '''
     # 更新代码
