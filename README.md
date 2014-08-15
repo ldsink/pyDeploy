@@ -1,7 +1,7 @@
 pyDeploy
 ========
 
-A simple python deploy script.
+A simple python deployment script.
 
 说明
 --

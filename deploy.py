@@ -40,8 +40,7 @@ def rsync(source, dest):
     if subprocess.call(cmd):
         raise Exception('rsync error.')
 
-
-if __name__ == "__main__":
+def main():
     if not os.path.isfile(config_file):
         raise Exception('Config file not exist.')
     config = configparser.ConfigParser()
@@ -60,7 +59,7 @@ if __name__ == "__main__":
     redis_host = config.get('redis', 'host')
     redis_port = config.get('redis', 'port')
     redis_key = config.get('redis', 'condition_key')
-    if not redis_host or not redis_key or not redis_key:
+    if not all((redis_key, redis_port, redis_host)):
         raise Exception('Read Config [redis] error.')
 
     # 更新代码
@@ -99,3 +98,9 @@ if __name__ == "__main__":
         redis_log(redis_host, redis_port, redis_key, 'executing outstanding work.')
         if subprocess.call([finish_script]):
             raise Exception('扫尾脚本运行时发生错误.')
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        print(e)
