@@ -6,6 +6,7 @@
 # Date  : 2014-08-14 16:50:41
 # --------------------------------------------
 
+import sys
 import os
 import configparser
 import subprocess
@@ -69,7 +70,6 @@ def rsync(rsync_path, source, dest, ignore):
            '-r',  # recurse into directories
            '-p',  # preserve permissions
            '--delete-delay',  # find deletions during, delete after
-           '--delete-excluded',  # also delete excluded files from destination dirs
            '--delay-updates'  # put all updated files into place at transfer's end
     ]
     if ignore:  # ignore file and directory
@@ -81,6 +81,10 @@ def rsync(rsync_path, source, dest, ignore):
 
 
 def main():
+    ip = None
+    if (len(sys.argv) > 1):
+        ip = sys.argv[1]
+
     if not os.path.isfile(CONFIG_FILE):
         raise Exception('Config file not exist.')
     config = configparser.ConfigParser()
@@ -107,6 +111,9 @@ def main():
     redis_key = config.get('redis', 'condition_key')
     if not all((redis_cli_path, redis_host, redis_port, redis_key)):
         raise Exception('redis config missing.')
+    if ip:
+        redis_key += ':' + ip
+
 
     # 初始化记录
     log = RedisLog(redis_cli_path, redis_host, redis_port, redis_key)
