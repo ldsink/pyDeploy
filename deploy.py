@@ -63,16 +63,19 @@ def check_tool(tool_name, tool_path=None):
     return is_exist
 
 
-def rsync(rsync_path, source, dest):
+def rsync(rsync_path, source, dest, ignore):
     cmd = [rsync_path,
            '-c',  # skip based on checksum, not mod-time & size
            '-r',  # recurse into directories
            '-p',  # preserve permissions
            '--delete-delay',  # find deletions during, delete after
-           '--delay-updates',  # put all updated files into place at transfer's end
-           source,
-           dest
+           '--delay-updates'  # put all updated files into place at transfer's end
     ]
+    if ignore:  # ignore file and directory
+        ignore = str(ignore).strip().split(',')
+        for file in ignore:
+            cmd.append('--exclude={}'.format(file.strip()))
+    cmd.extend([source, dest])
     return cmd_call(cmd)
 
 
@@ -153,8 +156,9 @@ def main():
         log.log(FIELD_MESSAGE, msg)
         raise Exception(msg)
 
+    sync_ignore = config.get('rsync', 'sync_ignore')
     log.log(FIELD_MESSAGE, 'rsyncing...')
-    if rsync(rsync_path, source_path, dest_path):
+    if rsync(rsync_path, source_path, dest_path, sync_ignore):
         msg = 'rsync error.'
         log.log(FIELD_STATUS, STATUS_ERROR)
         log.log(FIELD_MESSAGE, msg)
