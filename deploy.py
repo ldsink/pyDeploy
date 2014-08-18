@@ -32,6 +32,8 @@ def cmd_call(cmd, cwd=None):
     returncode = proc.wait()
     for line in proc.stdout.readline():
         pass
+    for line in proc.stderr.readline():
+        pass
     return returncode
 
 
