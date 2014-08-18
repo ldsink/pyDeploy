@@ -69,6 +69,7 @@ def rsync(rsync_path, source, dest, ignore):
            '-r',  # recurse into directories
            '-p',  # preserve permissions
            '--delete-delay',  # find deletions during, delete after
+           '--delete-excluded',  # also delete excluded files from destination dirs
            '--delay-updates'  # put all updated files into place at transfer's end
     ]
     if ignore:  # ignore file and directory
