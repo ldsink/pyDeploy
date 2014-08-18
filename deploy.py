@@ -27,6 +27,14 @@ FIELD_PROGRESS = 'progress'
 FIELD_MESSAGE = 'message'
 
 
+def cmd_call(cmd, cwd=None):
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=cwd)
+    returncode = proc.wait()
+    for line in proc.stdout.readline():
+        pass
+    return returncode
+
+
 class RedisLog():
     def __init__(self, path, host, port, key):
         self.path = path
@@ -35,8 +43,10 @@ class RedisLog():
         self.key = key
 
     def log(self, field, value):
+        if field == FIELD_MESSAGE:
+            print('INFO : {}'.format(value))
         cmd = [self.path, '-h', self.host, '-p', self.port, 'HSET', self.key, field, value]
-        if subprocess.call(cmd):
+        if cmd_call(cmd):
             raise Exception('Connect to redis error.')
 
 
@@ -61,7 +71,7 @@ def rsync(rsync_path, source, dest):
            source,
            dest
     ]
-    return subprocess.call(cmd)
+    return cmd_call(cmd)
 
 
 def main():
@@ -110,7 +120,7 @@ def main():
     if not git_path:
         git_path = 'git'
     cmd = [git_path, 'pull']
-    if subprocess.call(cmd, cwd=project_path):
+    if cmd_call(cmd, cwd=project_path):
         msg = 'git pull error.'
         log.log(FIELD_STATUS, STATUS_ERROR)
         log.log(FIELD_MESSAGE, msg)
@@ -122,7 +132,7 @@ def main():
     compile_script = config.get('env', 'compile_script')
     if compile_script:
         log.log(FIELD_MESSAGE, 'compiling.')
-        if subprocess.call([compile_script]):
+        if cmd_call([compile_script]):
             msg = '编译脚本运行时发生错误。'
             log.log(FIELD_STATUS, STATUS_ERROR)
             log.log(FIELD_MESSAGE, msg)
@@ -154,7 +164,7 @@ def main():
     finish_script = config.get('env', 'finish_script')
     if finish_script:
         log.log(FIELD_MESSAGE, 'executing outstanding work.')
-        if subprocess.call([finish_script]):
+        if cmd_call([finish_script]):
             msg = '扫尾脚本运行时发生错误。'
             log.log(FIELD_STATUS, STATUS_ERROR)
             log.log(FIELD_MESSAGE, msg)
