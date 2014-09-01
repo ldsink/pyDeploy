@@ -70,7 +70,8 @@ def rsync(rsync_path, source, dest, ignore):
            '-r',  # recurse into directories
            '-p',  # preserve permissions
            '--delete-delay',  # find deletions during, delete after
-           '--delay-updates'  # put all updated files into place at transfer's end
+           '--delay-updates',  # put all updated files into place at transfer's end
+           '--delete-excluded', # also delete excluded files from destination dirs
     ]
     if ignore:  # ignore file and directory
         ignore = str(ignore).strip().split(',')
@@ -85,10 +86,11 @@ def main():
     if (len(sys.argv) > 1):
         ip = sys.argv[1]
 
-    if not os.path.isfile(CONFIG_FILE):
+    config_file_path = os.path.split(os.path.realpath(__file__))[0] + '/' + CONFIG_FILE
+    if not os.path.isfile(config_file_path):
         raise Exception('Config file not exist.')
     config = configparser.ConfigParser()
-    config.read(CONFIG_FILE)
+    config.read(config_file_path)
 
     # 检查必须的工具
     redis_cli_path = config.get('env', 'redis_path')
